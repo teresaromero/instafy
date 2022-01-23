@@ -24,7 +24,7 @@ async def get_login(settings: Settings = Depends(get_settings)) -> dict:
         f'redirect_uri={settings.ig_api_redirect_url}',
         'scope=user_profile,user_media',
         'response_type=code',
-        'state=hola'
+        f'state={settings.ig_api_state}'
     ]
 
     url = base_url + "&".join(params)
