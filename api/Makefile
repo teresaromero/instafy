@@ -1,3 +1,7 @@
-.PHONY: start
-start:
-	pip3 install -r requirements.txt && python3 main.py
+.PHONY: install
+install:
+	pip3 install -r requirements.txt
+
+.PHONY: dev
+dev:
+	python3 main.py
