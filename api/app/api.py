@@ -1,6 +1,6 @@
 from http import HTTPStatus
 from fastapi import Depends, FastAPI
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from functools import lru_cache
 import requests
 
@@ -52,3 +52,19 @@ async def post_login_callback(code: str, state: str, settings: Settings = Depend
     if response.status_code == HTTPStatus.OK:
         return JSONResponse(body)
     return JSONResponse({"err": body}, HTTPStatus.INTERNAL_SERVER_ERROR)
+
+
+@app.get("/")
+async def root() -> str:
+    html_content = """
+    <html>
+        <head>
+            <title>Instafy API</title>
+        </head>
+        <body>
+            <h1>🎉</h1>
+            <a href="/login">Login with Instagram</a>
+        </body>
+    </html>
+    """
+    return HTMLResponse(html_content)
