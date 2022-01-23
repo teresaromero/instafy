@@ -1,0 +1,16 @@
+name: instafy
+
+endpoints:
+  - service: api
+    port: 8080
+
+services:
+  api:
+    build: 
+      context: api
+        
+    replicas: 1
+    ports:
+      - 8080
+    env_file: .api.env
+
