@@ -19,6 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 package cmd
 
 import (
@@ -43,16 +44,16 @@ var mediaCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		accessToken := viper.GetString("IG_ACCESS_TOKEN")
-		userId := viper.GetString("IG_USER_ID")
+		userID := viper.GetString("IG_USER_ID")
 
-		if accessToken == "" || userId == "" {
+		if accessToken == "" || userID == "" {
 			log.Fatal("no config, you have to login")
 		}
 
 		client := &http.Client{}
 
-		baseUrl := os.Getenv("INSTAFY_API_BASE_URL")
-		url, err := url.Parse(fmt.Sprintf("%s/media", baseUrl))
+		baseURL := os.Getenv("INSTAFY_API_BASE_URL")
+		url, err := url.Parse(fmt.Sprintf("%s/media", baseURL))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -63,7 +64,7 @@ var mediaCmd = &cobra.Command{
 		}
 
 		req.Header.Set("x-access-token", accessToken)
-		req.Header.Set("x-user-id", userId)
+		req.Header.Set("x-user-id", userID)
 
 		res, err := client.Do(req)
 		if err != nil {

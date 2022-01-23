@@ -19,6 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
 package cmd
 
 import (
@@ -40,6 +41,7 @@ var rootCmd = &cobra.Command{
 Free plan include 10 media objects from the last 60 days.`,
 }
 
+// Execute runs the command
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
