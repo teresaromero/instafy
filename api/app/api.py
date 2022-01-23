@@ -1,5 +1,6 @@
 from http import HTTPStatus
-from fastapi import Depends, FastAPI
+from datetime import datetime, timedelta
+from fastapi import Depends, FastAPI, Header
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from functools import lru_cache
 import requests
@@ -68,3 +69,42 @@ async def root() -> str:
     </html>
     """
     return HTMLResponse(html_content)
+
+
+@app.get("/media")
+async def get_media(
+    x_access_token: str = Header(default=""),
+    x_user_id: str = Header(default="")
+) -> dict:
+
+    if x_access_token == "" or x_user_id == "":
+        return JSONResponse(
+            {"error": "x-access-token or x-user-id headers missing"},
+            HTTPStatus.UNPROCESSABLE_ENTITY
+        )
+
+    today = datetime.today()
+    default_since = today - timedelta(days=60)
+    default_until = today
+
+    api_version = "v12.0"
+
+    base_url = f'https://graph.instagram.com/{api_version}'
+    endpoint = f'{x_user_id}/media'
+    params = [
+        f'access_token={x_access_token}',
+        "limit=10",
+        f"since={default_since}",
+        f"until={default_until}",
+        "fields=caption,media_type,media_url,timestamp"
+    ]
+    url = f'{base_url}/{endpoint}?{"&".join(params)}'
+
+    response = requests.get(url)
+    if response.status_code != HTTPStatus.OK:
+        return JSONResponse(response.json(), response.status_code)
+
+    body = response.json()
+    data = body["data"]
+
+    return JSONResponse(data)
