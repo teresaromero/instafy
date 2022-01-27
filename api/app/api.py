@@ -1,6 +1,7 @@
 import asyncio
 from http import HTTPStatus
 from datetime import datetime, timedelta
+import json
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
 from functools import lru_cache
@@ -37,7 +38,7 @@ async def login_event_generator(request: Request, client_id: str):
             event = auths[client_id]
             del auths[client_id]
 
-            yield dict(data=event)
+            yield dict(data=json.dumps(event))
             break
 
         await asyncio.sleep(status_stream_delay)
