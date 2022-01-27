@@ -23,11 +23,24 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"log"
+	"encoding/json"
+	"fmt"
+	"net/url"
+	"os"
+
+	"github.com/google/uuid"
+	"github.com/pkg/browser"
+	"github.com/r3labs/sse/v2"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+type authInfo struct {
+	accessToken string `json:"access_token"`
+	userID      int    `json:"user_id"`
+	clientID    string `json:"client_id"`
+}
 
 // loginCmd represents the login command
 var loginCmd = &cobra.Command{
@@ -36,34 +49,38 @@ var loginCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
-		token := cmd.Flag("token").Value.String()
-		user := cmd.Flag("user").Value.String()
+		clientID := uuid.New()
 
-		if token == "" || user == "" {
-			log.Fatal("no config flags, please login and use the flags")
+		baseURL := os.Getenv("IF_BASE_URL")
+		url, err := url.Parse(baseURL + fmt.Sprintf("/login?client_id=%s", clientID.String()))
+		cobra.CheckErr(err)
+
+		if err := browser.OpenURL(url.String()); err != nil {
+			cobra.CheckErr(err)
 		}
 
-		if token != "" {
-			viper.Set("IG_ACCESS_TOKEN", token)
-		}
-		if user != "" {
-			viper.Set("IG_USER_ID", user)
-		}
+		sseURL, err := url.Parse(baseURL + fmt.Sprintf("/stream-login?client_id=%s", clientID.String()))
+		cobra.CheckErr(err)
 
-		configFile := viper.ConfigFileUsed()
-		if err := viper.WriteConfigAs(configFile); err != nil {
-			log.Fatal(err)
-		}
+		sseClient := sse.NewClient(sseURL.String())
+		sseClient.SubscribeRaw(func(msg *sse.Event) {
 
-		log.Printf("login data saved at %s", configFile)
+			var authData authInfo
+			if err := json.Unmarshal(msg.Data, &authData); err != nil {
+				cobra.CheckErr(err)
+			}
+			viper.Set("access_token", authData.accessToken)
+			viper.Set("client_id", authData.clientID)
+			viper.Set("user_id", authData.userID)
+
+		})
+
+		fmt.Println("done!")
 
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
-
-	loginCmd.Flags().StringP("token", "t", "", "Access Token provided by Instagram")
-	loginCmd.Flags().StringP("user", "u", "", "User ID for your instagram user")
 
 }
