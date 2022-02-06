@@ -19,18 +19,21 @@ type IgBasicAPI struct {
 }
 
 // NewIgBasicAPI returns a new IgBasicAPI
-func NewIgBasicAPI() (*IgBasicAPI, error) {
+func NewIgBasicAPI(withAuth bool) (*IgBasicAPI, error) {
 
 	url := viper.GetString("INSTAFY_API_BASE_URL")
 	if url == "" {
 		return nil, fmt.Errorf("can't setup client, invalid url: %s", url)
 	}
 
-	token := viper.GetString(constants.AccessTokenEnv)
-	user := viper.GetString(constants.UserIDEnv)
+	var token, user string
+	if withAuth {
+		token = viper.GetString(constants.AccessTokenEnv)
+		user = viper.GetString(constants.UserIDEnv)
 
-	if token == "" || user == "" {
-		return nil, errors.New("can't setup client, invalid url, token or user")
+		if token == "" || user == "" {
+			return nil, errors.New("can't setup client, invalid url, token or user")
+		}
 	}
 
 	return &IgBasicAPI{

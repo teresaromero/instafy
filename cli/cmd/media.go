@@ -36,7 +36,7 @@ var mediaCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
-		api, err := client.NewIgBasicAPI()
+		api, err := client.NewIgBasicAPI(true)
 		cobra.CheckErr(err)
 
 		data, err := api.GetMedia()

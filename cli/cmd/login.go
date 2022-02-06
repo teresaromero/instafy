@@ -23,24 +23,12 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/url"
 
-	"github.com/google/uuid"
-	"github.com/pkg/browser"
-	"github.com/r3labs/sse/v2"
-	"github.com/teresaromero/instafy/constants"
+	"github.com/teresaromero/instafy/client"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
-
-type authInfo struct {
-	AccessToken string `json:"access_token"`
-	UserID      int    `json:"user_id"`
-	ClientID    string `json:"client_id"`
-}
 
 // loginCmd represents the login command
 var loginCmd = &cobra.Command{
@@ -49,33 +37,21 @@ var loginCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
-		clientID := uuid.New()
-
-		baseURL := viper.GetString("INSTAFY_API_BASE_URL")
-		url, err := url.Parse(baseURL + fmt.Sprintf("/login?client_id=%s", clientID.String()))
+		api, err := client.NewIgBasicAPI(false)
 		cobra.CheckErr(err)
 
-		if err := browser.OpenURL(url.String()); err != nil {
+		fmt.Println("A browser window will be opened now, go there and complete the auth process with your ig account")
+
+		clientID, err := api.LaunchLogin()
+		cobra.CheckErr(err)
+
+		fmt.Println("Waiting for auth to be completed....")
+
+		if err := api.ListenSSE(clientID); err != nil {
 			cobra.CheckErr(err)
 		}
 
-		sseURL, err := url.Parse(baseURL + fmt.Sprintf("/stream-login?client_id=%s", clientID.String()))
-		cobra.CheckErr(err)
-
-		sseClient := sse.NewClient(sseURL.String())
-		sseClient.SubscribeRaw(func(msg *sse.Event) {
-			var authData authInfo
-			if err := json.Unmarshal(msg.Data, &authData); err != nil {
-				cobra.CheckErr(err)
-			}
-			viper.Set(constants.AccessTokenEnv, authData.AccessToken)
-			viper.Set(constants.ClientIDEnv, authData.ClientID)
-			viper.Set(constants.UserIDEnv, authData.UserID)
-
-			if err := viper.WriteConfig(); err != nil {
-				cobra.CheckErr(err)
-			}
-		})
+		fmt.Println("SUCCESS: Login completed!")
 
 	},
 }
