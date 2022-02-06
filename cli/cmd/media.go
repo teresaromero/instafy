@@ -23,17 +23,10 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"net/url"
-	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"github.com/teresaromero/instafy/models"
+	"github.com/teresaromero/instafy/client"
 )
 
 // mediaCmd represents the media command
@@ -43,45 +36,11 @@ var mediaCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
-		accessToken := viper.GetString("IG_ACCESS_TOKEN")
-		userID := viper.GetString("IG_USER_ID")
+		api, err := client.NewIgBasicAPI()
+		cobra.CheckErr(err)
 
-		if accessToken == "" || userID == "" {
-			log.Fatal("no config, you have to login")
-		}
-
-		client := &http.Client{}
-
-		baseURL := os.Getenv("INSTAFY_API_BASE_URL")
-		url, err := url.Parse(fmt.Sprintf("%s/media", baseURL))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		req, err := http.NewRequest("GET", url.String(), nil)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		req.Header.Set("x-access-token", accessToken)
-		req.Header.Set("x-user-id", userID)
-
-		res, err := client.Do(req)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		defer res.Body.Close()
-
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		data := models.MediaResponse{}
-		if err := json.Unmarshal(body, &data); err != nil {
-			log.Fatal(err)
-		}
+		data, err := api.GetMedia()
+		cobra.CheckErr(err)
 
 		log.Printf("Got %v media objects", len(data))
 
