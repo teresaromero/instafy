@@ -30,15 +30,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/browser"
 	"github.com/r3labs/sse/v2"
+	"github.com/teresaromero/instafy/constants"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-)
-
-const (
-	accessTokenEnv = "access_token"
-	clientIDEnv    = "client_id"
-	userIDEnv      = "user_id"
 )
 
 type authInfo struct {
@@ -73,9 +68,9 @@ var loginCmd = &cobra.Command{
 			if err := json.Unmarshal(msg.Data, &authData); err != nil {
 				cobra.CheckErr(err)
 			}
-			viper.Set(accessTokenEnv, authData.AccessToken)
-			viper.Set(clientIDEnv, authData.ClientID)
-			viper.Set(userIDEnv, authData.UserID)
+			viper.Set(constants.AccessTokenEnv, authData.AccessToken)
+			viper.Set(constants.ClientIDEnv, authData.ClientID)
+			viper.Set(constants.UserIDEnv, authData.UserID)
 
 			if err := viper.WriteConfig(); err != nil {
 				cobra.CheckErr(err)
