@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/google/uuid"
 	"github.com/pkg/browser"
@@ -36,10 +35,16 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	accessTokenEnv = "access_token"
+	clientIDEnv    = "client_id"
+	userIDEnv      = "user_id"
+)
+
 type authInfo struct {
-	accessToken string `json:"access_token"`
-	userID      int    `json:"user_id"`
-	clientID    string `json:"client_id"`
+	AccessToken string `json:"access_token"`
+	UserID      int    `json:"user_id"`
+	ClientID    string `json:"client_id"`
 }
 
 // loginCmd represents the login command
@@ -51,7 +56,7 @@ var loginCmd = &cobra.Command{
 
 		clientID := uuid.New()
 
-		baseURL := os.Getenv("IF_BASE_URL")
+		baseURL := viper.GetString("INSTAFY_API_BASE_URL")
 		url, err := url.Parse(baseURL + fmt.Sprintf("/login?client_id=%s", clientID.String()))
 		cobra.CheckErr(err)
 
@@ -64,18 +69,18 @@ var loginCmd = &cobra.Command{
 
 		sseClient := sse.NewClient(sseURL.String())
 		sseClient.SubscribeRaw(func(msg *sse.Event) {
-
 			var authData authInfo
 			if err := json.Unmarshal(msg.Data, &authData); err != nil {
 				cobra.CheckErr(err)
 			}
-			viper.Set("access_token", authData.accessToken)
-			viper.Set("client_id", authData.clientID)
-			viper.Set("user_id", authData.userID)
+			viper.Set(accessTokenEnv, authData.AccessToken)
+			viper.Set(clientIDEnv, authData.ClientID)
+			viper.Set(userIDEnv, authData.UserID)
 
+			if err := viper.WriteConfig(); err != nil {
+				cobra.CheckErr(err)
+			}
 		})
-
-		fmt.Println("done!")
 
 	},
 }
