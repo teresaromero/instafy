@@ -23,8 +23,8 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"log"
-
+	"github.com/fatih/color"
+	"github.com/rodaine/table"
 	"github.com/spf13/cobra"
 	"github.com/teresaromero/instafy/client"
 )
@@ -42,7 +42,17 @@ var mediaCmd = &cobra.Command{
 		data, err := api.GetMedia()
 		cobra.CheckErr(err)
 
-		log.Printf("Got %v media objects", len(data))
+		headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+		columnFmt := color.New(color.FgYellow).SprintfFunc()
+
+		tbl := table.New("Timestamp", "ID", "MediaType", "Caption")
+		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+
+		for _, media := range data {
+			tbl.AddRow(media.Timestamp, media.ID, media.MediaType, media.Caption)
+		}
+
+		tbl.Print()
 
 	},
 }
