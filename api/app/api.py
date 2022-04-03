@@ -1,47 +1,15 @@
-import asyncio
 from http import HTTPStatus
-from datetime import datetime, timedelta
-import json
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.responses import RedirectResponse, JSONResponse, HTMLResponse
-from functools import lru_cache
-import requests
 from sse_starlette.sse import EventSourceResponse
+from app.auth_storage import authStorage
+from app.config import Settings, get_settings
 
-from .config import Settings
-
-
-@lru_cache()
-def get_settings():
-    return Settings()
+from app.ig_client import get_access_token, get_autorize_url, get_user_media
+from app.streams import login_event_generator
 
 
 app = FastAPI()
-
-
-status_stream_delay = 5  # second
-status_stream_retry_timeout = 30000  # milisecond
-
-# temp storage for auths
-auths = {}
-
-
-async def login_event_generator(request: Request, client_id: str):
-    while True:
-        if await request.is_disconnected():
-            print('Request disconnected')
-            break
-
-        if client_id in auths:
-            print('Request completed. Disconnecting now')
-
-            event = auths[client_id]
-            del auths[client_id]
-
-            yield dict(data=json.dumps(event))
-            break
-
-        await asyncio.sleep(status_stream_delay)
 
 
 @app.get('/stream-login')
@@ -56,43 +24,25 @@ async def runStatus(
 @app.get("/login")
 async def get_login(client_id: str = "", settings: Settings = Depends(get_settings)) -> dict:
 
-    base_url = "https://api.instagram.com/oauth/authorize?"
-    params = [
-        f'client_id={settings.ig_api_client_id}',
-        f'redirect_uri={settings.ig_api_redirect_url}',
-        'scope=user_profile,user_media',
-        'response_type=code',
-        f'state={client_id}'
-    ]
-
-    url = base_url + "&".join(params)
-
-    return RedirectResponse(url)
+    try:
+        url = get_autorize_url(client_id, settings)
+        return RedirectResponse(url)
+    except Exception as err:
+        return JSONResponse(err, HTTPStatus.BAD_REQUEST)
 
 
 @app.get("/login/callback")
 async def post_login_callback(code: str, state: str, settings: Settings = Depends(get_settings)) -> dict:
 
-    if state == "":
-        return JSONResponse({"error": "invalid client_id"}, HTTPStatus.BAD_REQUEST)
+    if state == "" or code == "":
+        return JSONResponse({"error": "invalid parameters code or state"}, HTTPStatus.BAD_REQUEST)
 
-    base_url = "https://api.instagram.com/oauth/access_token"
-    data = {
-        "client_id":     settings.ig_api_client_id,
-        "client_secret": settings.ig_api_client_secret,
-        "grant_type":    settings.ig_api_grant_type,
-        "redirect_uri":  settings.ig_api_redirect_url,
-        "code":          code,
-    }
+    try:
+        res = get_access_token(code, settings)
+    except Exception as err:
+        return err
 
-    response = requests.post(url=base_url, data=data)
-    body = response.json()
-
-    if response.status_code != HTTPStatus.OK:
-        return JSONResponse({"err": body}, HTTPStatus.INTERNAL_SERVER_ERROR)
-
-    auths[state] = dict(access_token=body["access_token"],
-                        user_id=body["user_id"], client_id=state)
+    authStorage.saveAuth(state, res["access_token"], res["user_id"])
 
     html_content = """
     <html>
@@ -132,31 +82,11 @@ async def get_media(
     if x_access_token == "" or x_user_id == "":
         return JSONResponse(
             {"error": "x-access-token or x-user-id headers missing"},
-            HTTPStatus.UNPROCESSABLE_ENTITY
+            HTTPStatus.BAD_REQUEST
         )
 
-    today = datetime.today()
-    default_since = today - timedelta(days=60)
-    default_until = today
-
-    api_version = "v12.0"
-
-    base_url = f'https://graph.instagram.com/{api_version}'
-    endpoint = f'{x_user_id}/media'
-    params = [
-        f'access_token={x_access_token}',
-        "limit=10",
-        f"since={default_since}",
-        f"until={default_until}",
-        "fields=caption,media_type,media_url,timestamp"
-    ]
-    url = f'{base_url}/{endpoint}?{"&".join(params)}'
-
-    response = requests.get(url)
-    if response.status_code != HTTPStatus.OK:
-        return JSONResponse(response.json(), response.status_code)
-
-    body = response.json()
-    data = body["data"]
-
-    return JSONResponse(data)
+    try:
+        res = get_user_media(x_user_id, x_access_token)
+        return JSONResponse(res, HTTPStatus.OK)
+    except Exception as err:
+        return JSONResponse(err, HTTPStatus.INTERNAL_SERVER_ERROR)
